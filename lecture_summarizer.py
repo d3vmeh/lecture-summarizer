@@ -76,7 +76,6 @@ audio_size_mb = int(os.stat(audio_path).st_size/(1024**2))
 
 transcriptions = []
 
-count = 0
 num_files = 1
 if audio_size_mb > 25:
     print("Audio file is too large. Will be split into chunks")
@@ -85,15 +84,15 @@ if audio_size_mb > 25:
     audio_path  = f"./audio/chunks/chunk{count}.mp3"
     num_files = num_chunks
 
-
-
-
-
-for i in range(num_files):
-    print(f"transcribing: {i}")
-    transcription, segments =  get_transcription_from_audio(f"./audio/chunks/chunk{i}.mp3", model_size= "tiny")
+    for i in range(num_files):
+        print(f"transcribing: {i}")
+        transcription, segments =  get_transcription_from_audio(f"./audio/chunks/chunk{i}.mp3", model_size= "tiny")
+        transcriptions.append(transcription)
+else:
+    audio_path = f"./audio/audio.mp3"
+    transcription, segments = get_transcription_from_audio(f"./audio/audio.mp3", model_size= "tiny")
     transcriptions.append(transcription)
-    count += 1
+
 
 
 #for t in transcriptions:
