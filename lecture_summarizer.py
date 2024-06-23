@@ -3,17 +3,18 @@ import os
 import requests
 from pydub import AudioSegment
 import math
+import time
 
 api_key = os.getenv("OPENAI_API_KEY")
 
 
 def get_transcription_from_audio(audio_path, model_size = "base"):
    # Run on GPU with FP16
-    model = WhisperModel(model_size, device="cuda", compute_type="float16")
+    model = WhisperModel(model_size, device="CPU", compute_type="int8")
     segments, info = model.transcribe(audio_path, beam_size=5)
 
     #for s in segments:
-      #print(s.text)
+    #  print(s.text)
     transcriptions_list = []
     transcription_chunk = ""
 
@@ -25,7 +26,7 @@ def get_transcription_from_audio(audio_path, model_size = "base"):
     transcription = ' '.join([segment.text for segment in segments])
     return transcription, segments
 
-def get_summary(transcription):
+def get_response(transcription, instructions):
     #encoded_image = encode_image(path)
 
     headers = {
@@ -36,7 +37,7 @@ def get_summary(transcription):
     message = {
         "role": "user",
         "content": [
-            {"type": "text", "text": f"Please summarize this transcript, you can use bullet points if you need to: {transcription}"},
+            {"type": "text", "text": f"{instructions} Use the following transcription to answer the user: {transcription} "},
         ]
     }
 
@@ -67,9 +68,16 @@ def split_mp3(audio_path, chunks):#, chunk_length_ms=30000):  # chunk_length_ms 
         chunk.export(chunk_path, format="mp3")
         print(f"Exported {chunk_path}")
 
-audiofile_path = os.listdir("audio/")[-1]
+audio_files= os.listdir("audio/")
 
-audio_path = "./audio/audio.mp3"
+audio_paths = []
+for f in audio_files:
+    if "mp3" in f:
+        audio_path = f"./audio/{f}"
+        audio_paths.append(audio_path)
+
+
+#audio_path = "./audio/audio.mp3"
 #split_mp3(audio_path)
 
 audio_size_mb = int(os.stat(audio_path).st_size/(1024**2))
@@ -77,9 +85,10 @@ audio_size_mb = int(os.stat(audio_path).st_size/(1024**2))
 transcriptions = []
 
 num_files = 1
-if audio_size_mb > 25:
+count = 0
+if audio_size_mb > 15:
     print("Audio file is too large. Will be split into chunks")
-    num_chunks = math.ceil(audio_size_mb/25)
+    num_chunks = math.ceil(audio_size_mb/15)
     split_mp3(audio_path, num_chunks)
     audio_path  = f"./audio/chunks/chunk{count}.mp3"
     num_files = num_chunks
@@ -88,26 +97,47 @@ if audio_size_mb > 25:
         print(f"transcribing: {i}")
         transcription, segments =  get_transcription_from_audio(f"./audio/chunks/chunk{i}.mp3", model_size= "tiny")
         transcriptions.append(transcription)
+        print(f"transcription {i} completed")
+
+    print(len(transcriptions))
+    for f in os.listdir("./audio/chunks"):
+        os.remove(f"./audio/chunks/{f}")
+        print("removed",f)
+    os.rmdir("./audio/chunks")
+    print("all chunks removed")
 else:
     audio_path = f"./audio/audio.mp3"
-    transcription, segments = get_transcription_from_audio(f"./audio/audio.mp3", model_size= "tiny")
+    transcription, segments = get_transcription_from_audio(f"./audio/audio.mp3", model_size= "medium.en")
     transcriptions.append(transcription)
-
 
 
 #for t in transcriptions:
 #    print(t)
-
 f = open("transcription.txt", "w")
-f.write(transcription)
 f.close()
+for t in transcriptions:
+    f = open("transcription.txt", "a")
+    f.write(t)
+    f.close()
 
 
 print("transcription completed")
 
 # exit()
-response = get_summary(transcription)
+response = get_response(transcription, "Please summarize this transcript")
 
 response_text = response["choices"][0]["message"]["content"]
 
 print("here is a summary:\n\n",response_text)
+
+while True:
+    q = input("What would you like to ask? ")
+
+    if q.lower() == 'q':
+        exit()
+
+    response = get_response(transcription, q)
+    response_text = response["choices"][0]["message"]["content"]
+    print(response_text)
+    print("\n\n\n")
+
