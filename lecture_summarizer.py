@@ -10,7 +10,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 
 def get_transcription_from_audio(audio_path, model_size = "base"):
    # Run on GPU with FP16
-    model = WhisperModel(model_size, device="CPU", compute_type="int8")
+    model = WhisperModel(model_size, device="cuda", compute_type="int8")
     segments, info = model.transcribe(audio_path, beam_size=5)
 
     #for s in segments:
@@ -86,9 +86,9 @@ transcriptions = []
 
 num_files = 1
 count = 0
-if audio_size_mb > 15:
+if audio_size_mb > 5:
     print("Audio file is too large. Will be split into chunks")
-    num_chunks = math.ceil(audio_size_mb/15)
+    num_chunks = math.ceil(audio_size_mb/5)
     split_mp3(audio_path, num_chunks)
     audio_path  = f"./audio/chunks/chunk{count}.mp3"
     num_files = num_chunks
