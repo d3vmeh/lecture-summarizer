@@ -4,13 +4,15 @@ import requests
 from pydub import AudioSegment
 import math
 import time
+import sys
 
 api_key = os.getenv("OPENAI_API_KEY")
+sys.path.append('/Users/devm2/Downloads/FFMPEP_DONT_DELETE/ffmpeg')
 
 
 def get_transcription_from_audio(audio_path, model_size = "base"):
    # Run on GPU with FP16
-    model = WhisperModel(model_size, device="cuda", compute_type="int8")
+    model = WhisperModel(model_size, device="cpu", compute_type="int8")
     segments, info = model.transcribe(audio_path, beam_size=5)
 
     #for s in segments:
