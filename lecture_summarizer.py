@@ -10,7 +10,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 
 def get_transcription_from_audio(audio_path, model_size = "base"):
    # Run on GPU with FP16
-    model = WhisperModel(model_size, device="cuda", compute_type="int8")
+    model = WhisperModel(model_size, device="cuda", compute_type="float16")
     segments, info = model.transcribe(audio_path, beam_size=5)
 
     #for s in segments:
@@ -42,7 +42,7 @@ def get_response(transcription, instructions):
     }
 
     payload = {
-        "model": "gpt-4o",
+        "model": "gpt-4o-mini",
         "temperature": 0.5,
         "messages": [message],
         "max_tokens": 800
@@ -95,7 +95,7 @@ if audio_size_mb > 5:
 
     for i in range(num_files):
         print(f"transcribing: {i}")
-        transcription, segments =  get_transcription_from_audio(f"./audio/chunks/chunk{i}.mp3", model_size= "tiny")
+        transcription, segments =  get_transcription_from_audio(f"./audio/chunks/chunk{i}.mp3", model_size= "medium.en")
         transcriptions.append(transcription)
         print(f"transcription {i} completed")
 
