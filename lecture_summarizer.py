@@ -10,7 +10,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 
 def get_transcription_from_audio(audio_path, model_size = "base"):
    # Run on GPU with FP16
-    model = WhisperModel(model_size, device="cuda", compute_type="float16")
+    model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
     segments, info = model.transcribe(audio_path, beam_size=5)
 
     #for s in segments:
@@ -45,7 +45,7 @@ def get_response(transcription, instructions):
         "model": "gpt-4o-mini",
         "temperature": 0.5,
         "messages": [message],
-        "max_tokens": 800
+        "max_tokens": 2000
     }
 
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
@@ -95,9 +95,10 @@ if audio_size_mb > 5:
 
     for i in range(num_files):
         print(f"transcribing: {i}")
-        transcription, segments =  get_transcription_from_audio(f"./audio/chunks/chunk{i}.mp3", model_size= "medium.en")
+        transcription, segments =  get_transcription_from_audio(f"./audio/chunks/chunk{i}.mp3", model_size = "large-v3")#, model_size= "medium.en")
         transcriptions.append(transcription)
         print(f"transcription {i} completed")
+        time.sleep(10)
 
     print(len(transcriptions))
     for f in os.listdir("./audio/chunks"):
@@ -107,7 +108,7 @@ if audio_size_mb > 5:
     print("all chunks removed")
 else:
     audio_path = f"./audio/audio.mp3"
-    transcription, segments = get_transcription_from_audio(f"./audio/audio.mp3", model_size= "medium.en")
+    transcription, segments = get_transcription_from_audio(f"./audio/audio.mp3")#, model_size= "medium.en")
     transcriptions.append(transcription)
 
 
@@ -124,7 +125,7 @@ for t in transcriptions:
 print("transcription completed")
 
 # exit()
-response = get_response(transcription, "Please summarize this transcript")
+response = get_response(transcription, "Please summarize this transcript. Be detailed and thorough in your response.")
 
 response_text = response["choices"][0]["message"]["content"]
 
