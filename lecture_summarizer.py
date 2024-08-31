@@ -5,6 +5,9 @@ from pydub import AudioSegment
 import math
 import time
 import sys
+from database import *
+from langchain_openai import OpenAIEmbeddings
+
 
 api_key = os.getenv("OPENAI_API_KEY")
 sys.path.append('/Users/devm2/Downloads/FFMPEP_DONT_DELETE/ffmpeg')
@@ -28,7 +31,7 @@ def get_transcription_from_audio(audio_path, model_size = "base"):
     transcription = ' '.join([segment.text for segment in segments])
     return transcription, segments
 
-def get_response(transcription, instructions):
+def get_response(context, instructions):
     #encoded_image = encode_image(path)
 
     headers = {
@@ -39,7 +42,7 @@ def get_response(transcription, instructions):
     message = {
         "role": "user",
         "content": [
-            {"type": "text", "text": f"{instructions} Use the following transcription to answer the user: {transcription} "},
+            {"type": "text", "text": f"{instructions} Use the following context to answer the user: {context} "},
         ]
     }
 
@@ -129,16 +132,22 @@ print("transcription completed")
 response = get_response(transcription, "Please summarize this transcript")
 
 response_text = response["choices"][0]["message"]["content"]
+embeddings = OpenAIEmbeddings()
+
+chunks = load_and_split()
+save_database(embeddings, chunks)
+
 
 print("here is a summary:\n\n",response_text)
-
+db = load_database(embeddings)
 while True:
     q = input("What would you like to ask? ")
 
     if q.lower() == 'q':
         exit()
 
-    response = get_response(transcription, q)
+    context = query_database(q, db)
+    response = get_response(context, q)
     response_text = response["choices"][0]["message"]["content"]
     print(response_text)
     print("\n\n\n")
