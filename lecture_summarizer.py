@@ -13,7 +13,10 @@ import streamlit as st
 from ui_chat import load_chat_history, save_chat_history
 
 from langchain_chroma import Chroma
+
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_community.llms.ollama import Ollama
+
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain.chains import ConversationChain
@@ -150,6 +153,8 @@ transcription = file.read()
 file.close()
 
 llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.5)
+llm = Ollama(model="llama3.1",temperature=0.5)
+
 conversation = ConversationChain(llm = llm, memory = ConversationSummaryMemory(llm=llm))
 
 
@@ -161,44 +166,38 @@ embeddings = OpenAIEmbeddings()
 #chunks = load_and_split()
 #save_database(embeddings, chunks)
 db = load_database(embeddings)
-
-
-#print("here is a summary:\n\n",response)
-
-
-
-
-
 print("Ready to answer questions")
 
-st.title("Video Summarizer")
+st.title("Chat with Video Transcript")
+
+if "messages" not in st.session_state:
+    st.session_state.messages = load_chat_history()
+
 
 with st.sidebar:
-    if st.button("Delete Chat History"):
+    if st.button("Clear Chat History"):
         st.session_state.messages = []
         save_chat_history([])
 
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-chat_placeholder = st.container()
-prompt_placeholder = st.form("chat-form")
+if prompt := st.chat_input("How can I help?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        context = query_database(prompt,db)
+        print(context)
+        full_response = get_response(context,prompt,llm)
+        message_placeholder.markdown(full_response)   
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
 
-user_query = st.chat_input("Enter a question")
+save_chat_history(st.session_state.messages)
 
-if user_query != None and user_query != "":
 
-    st.session_state.chat_history.append(HumanMessage(user_query))
-
-    with st.chat_message("Human"):
-        st.markdown(user_query)
-
-    with st.chat_message("AI"):
-        context = query_database(user_query, db)
-        response = get_response(context, user_query, llm)
-        st.markdown(response)
-
-    st.session_state.chat_history.append(AIMessage(response))
 
 
 
