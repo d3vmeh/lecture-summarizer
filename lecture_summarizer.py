@@ -6,11 +6,21 @@ import math
 import time
 import sys
 from database import *
-from langchain_openai import OpenAIEmbeddings
+
+import streamlit as st
+
+
+from ui_chat import load_chat_history, save_chat_history
+
+from langchain_chroma import Chroma
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
+from langchain.chains import ConversationChain
+from langchain.memory.summary import ConversationSummaryMemory
 
 
 api_key = os.getenv("OPENAI_API_KEY")
-sys.path.append('/Users/devm2/Downloads/FFMPEP_DONT_DELETE/ffmpeg')
 
 
 def get_transcription_from_audio(audio_path, model_size = "base"):
@@ -31,30 +41,38 @@ def get_transcription_from_audio(audio_path, model_size = "base"):
     transcription = ' '.join([segment.text for segment in segments])
     return transcription, segments
 
-def get_response(context, instructions):
+def get_response(context, question, llm):
     #encoded_image = encode_image(path)
 
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    }
+    prompt = ChatPromptTemplate.from_messages(
+        [
+        (
+            "system",
+            "You are an experienced advisor and international diplomat who is assisting the US government in foreign policy. You use natural language "
+         "to answer questions based on structured data, unstructured data, and community summaries. You are thoughtful and thorough in your responses."
+        ),
+        (
+            "user",
+            """Answer the question only based on the following context:
+            {context}
 
-    message = {
-        "role": "user",
-        "content": [
-            {"type": "text", "text": f"{instructions} Use the following context to answer the user: {context} "},
+
+            Here is the question:
+            {question}"""
+        ),
         ]
-    }
-
-    payload = {
-        "model": "gpt-4o-mini",
-        "temperature": 0.5,
-        "messages": [message],
-        "max_tokens": 2000
-    }
-
-    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-    return response.json()
+        )
+    
+    chain = (
+         {"context": lambda x: context, "question": RunnablePassthrough()}
+         | prompt
+         | llm
+         | StrOutputParser()
+    )
+    #response_text = model.invoke(prompt)
+    response_text = chain.invoke(question)
+    return response_text
+    
 
 def split_mp3(audio_path, chunks):#, chunk_length_ms=30000):  # chunk_length_ms is in milliseconds
     audio = AudioSegment.from_mp3(audio_path)
@@ -98,6 +116,7 @@ def transcribe_file():
             transcription, segments =  get_transcription_from_audio(f"./audio/chunks/chunk{i}.mp3", model_size= "tiny")
             transcriptions.append(transcription)
             print(f"transcription {i} completed")
+            time.sleep(20)
 
         print(len(transcriptions))
         for f in os.listdir("./audio/chunks"):
@@ -105,6 +124,8 @@ def transcribe_file():
             print("removed",f)
         os.rmdir("./audio/chunks")
         print("all chunks removed")
+
+
     else:
         audio_path = f"./audio/audio.mp3"
         transcription, segments = get_transcription_from_audio(f"./audio/audio.mp3", model_size= "medium.en")
@@ -121,35 +142,49 @@ def transcribe_file():
     print("transcription completed")
 
 
-#for t in transcriptions:
-#    print(t)
+#transcribe_file()
 
 
-# exit()
 file = open("transcription.txt", "r")
 transcription = file.read()
 file.close()
 
-response = get_response(transcription, "Please summarize this transcript")
+llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.5)
+conversation = ConversationChain(llm = llm, memory = ConversationSummaryMemory(llm=llm))
 
-response_text = response["choices"][0]["message"]["content"]
+
+response = get_response(transcription, "Please summarize this transcript", llm)
+
+#response_text = response["choices"][0]["message"]["content"]
 embeddings = OpenAIEmbeddings()
 
 chunks = load_and_split()
 save_database(embeddings, chunks)
 
 
-print("here is a summary:\n\n",response_text)
+print("here is a summary:\n\n",response)
 db = load_database(embeddings)
-while True:
-    q = input("What would you like to ask? ")
 
-    if q.lower() == 'q':
-        exit()
 
-    context = query_database(q, db)
-    response = get_response(context, q)
-    response_text = response["choices"][0]["message"]["content"]
-    print(response_text)
-    print("\n\n\n")
+
+
+
+print("Ready to answer questions")
+
+# st.title("Video Summarizer")
+
+# with st.sidebar:
+#     if st.button("Delete Chat History"):
+#         st.session_state.messages = []
+#         save_chat_history([])
+
+# chat_placeholder = st.container()
+# prompt_placeholder = st.form("chat-form")
+
+# with prompt_placeholder:
+#     question = st.text_area("Enter a prompt")
+#     if st.form_submit_button("Submit"):
+#         response
+
+
 
