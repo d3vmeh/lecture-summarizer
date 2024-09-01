@@ -18,7 +18,7 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain.chains import ConversationChain
 from langchain.memory.summary import ConversationSummaryMemory
-
+from langchain_core.messages import HumanMessage, AIMessage
 
 api_key = os.getenv("OPENAI_API_KEY")
 
@@ -153,17 +153,17 @@ llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.5)
 conversation = ConversationChain(llm = llm, memory = ConversationSummaryMemory(llm=llm))
 
 
-response = get_response(transcription, "Please summarize this transcript", llm)
+#response = get_response(transcription, "Please summarize this transcript", llm)
 
 #response_text = response["choices"][0]["message"]["content"]
 embeddings = OpenAIEmbeddings()
 
-chunks = load_and_split()
-save_database(embeddings, chunks)
-
-
-print("here is a summary:\n\n",response)
+#chunks = load_and_split()
+#save_database(embeddings, chunks)
 db = load_database(embeddings)
+
+
+#print("here is a summary:\n\n",response)
 
 
 
@@ -171,20 +171,35 @@ db = load_database(embeddings)
 
 print("Ready to answer questions")
 
-# st.title("Video Summarizer")
+st.title("Video Summarizer")
 
-# with st.sidebar:
-#     if st.button("Delete Chat History"):
-#         st.session_state.messages = []
-#         save_chat_history([])
+with st.sidebar:
+    if st.button("Delete Chat History"):
+        st.session_state.messages = []
+        save_chat_history([])
 
-# chat_placeholder = st.container()
-# prompt_placeholder = st.form("chat-form")
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
-# with prompt_placeholder:
-#     question = st.text_area("Enter a prompt")
-#     if st.form_submit_button("Submit"):
-#         response
+chat_placeholder = st.container()
+prompt_placeholder = st.form("chat-form")
+
+user_query = st.chat_input("Enter a question")
+
+if user_query != None and user_query != "":
+
+    st.session_state.chat_history.append(HumanMessage(user_query))
+
+    with st.chat_message("Human"):
+        st.markdown(user_query)
+
+    with st.chat_message("AI"):
+        context = query_database(user_query, db)
+        response = get_response(context, user_query, llm)
+        st.markdown(response)
+
+    st.session_state.chat_history.append(AIMessage(response))
+
 
 
 
