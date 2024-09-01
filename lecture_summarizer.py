@@ -73,67 +73,64 @@ def split_mp3(audio_path, chunks):#, chunk_length_ms=30000):  # chunk_length_ms 
         chunk.export(chunk_path, format="mp3")
         print(f"Exported {chunk_path}")
 
-audio_files= os.listdir("audio/")
+def transcribe_file():
+    audio_files= os.listdir("audio/")
+    audio_paths = []
+    for f in audio_files:
+        if "mp3" in f:
+            audio_path = f"./audio/{f}"
+            audio_paths.append(audio_path)
+    #audio_path = "./audio/audio.mp3"
+    #split_mp3(audio_path)
+    audio_size_mb = int(os.stat(audio_path).st_size/(1024**2))
+    transcriptions = []
+    num_files = 1
+    count = 0
+    if audio_size_mb > 5:
+        print("Audio file is too large. Will be split into chunks")
+        num_chunks = math.ceil(audio_size_mb/5)
+        split_mp3(audio_path, num_chunks)
+        audio_path  = f"./audio/chunks/chunk{count}.mp3"
+        num_files = num_chunks
 
-audio_paths = []
-for f in audio_files:
-    if "mp3" in f:
-        audio_path = f"./audio/{f}"
-        audio_paths.append(audio_path)
+        for i in range(num_files):
+            print(f"transcribing: {i}")
+            transcription, segments =  get_transcription_from_audio(f"./audio/chunks/chunk{i}.mp3", model_size= "tiny")
+            transcriptions.append(transcription)
+            print(f"transcription {i} completed")
 
-
-#audio_path = "./audio/audio.mp3"
-#split_mp3(audio_path)
-
-audio_size_mb = int(os.stat(audio_path).st_size/(1024**2))
-
-transcriptions = []
-
-num_files = 1
-count = 0
-if audio_size_mb > 5:
-    print("Audio file is too large. Will be split into chunks")
-    num_chunks = math.ceil(audio_size_mb/5)
-    split_mp3(audio_path, num_chunks)
-    audio_path  = f"./audio/chunks/chunk{count}.mp3"
-    num_files = num_chunks
-
-    for i in range(num_files):
-        print(f"transcribing: {i}")
-        transcription, segments =  get_transcription_from_audio(f"./audio/chunks/chunk{i}.mp3", model_size = "tiny")#, model_size= "medium.en")
+        print(len(transcriptions))
+        for f in os.listdir("./audio/chunks"):
+            os.remove(f"./audio/chunks/{f}")
+            print("removed",f)
+        os.rmdir("./audio/chunks")
+        print("all chunks removed")
+    else:
+        audio_path = f"./audio/audio.mp3"
+        transcription, segments = get_transcription_from_audio(f"./audio/audio.mp3", model_size= "medium.en")
         transcriptions.append(transcription)
-        print(f"transcription {i} completed")
-        time.sleep(20)
 
-    print(len(transcriptions))
-    for f in os.listdir("./audio/chunks"):
-        os.remove(f"./audio/chunks/{f}")
-        print("removed",f)
-    
-else:
-    audio_path = f"./audio/audio.mp3"
-    transcription, segments = get_transcription_from_audio(f"./audio/audio.mp3")#, model_size= "medium.en")
-    transcriptions.append(transcription)
-try:
-    os.rmdir("./audio/chunks")
-    print("all chunks removed")
-except:
-    pass
+    f = open("transcription.txt", "w")
+    f.close()
+    for t in transcriptions:
+        f = open("transcription.txt", "a")
+        f.write(t)
+        f.close()
+
+
+    print("transcription completed")
+
 
 #for t in transcriptions:
 #    print(t)
-f = open("transcription.txt", "w")
-f.close()
-for t in transcriptions:
-    f = open("transcription.txt", "a")
-    f.write(t)
-    f.close()
 
-
-print("transcription completed")
 
 # exit()
-response = get_response(transcription, "Please summarize this transcript. Be detailed and thorough in your response.")
+file = open("transcription.txt", "r")
+transcription = file.read()
+file.close()
+
+response = get_response(transcription, "Please summarize this transcript")
 
 response_text = response["choices"][0]["message"]["content"]
 embeddings = OpenAIEmbeddings()
