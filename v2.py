@@ -6,7 +6,6 @@ import time
 import sys
 from database import *
 import streamlit as st
-import yt_dlp
 
 
 from ui_chat import load_chat_history, save_chat_history
@@ -22,30 +21,25 @@ from langchain.chains import ConversationChain
 from langchain.memory.summary import ConversationSummaryMemory
 from langchain_core.messages import HumanMessage, AIMessage
 
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api.formatters import TextFormatter
+
+
+
 api_key = os.getenv("OPENAI_API_KEY")
 
-def get_transcription_from_youtube(url):
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-        'outtmpl': './audio/audio.%(ext)s',
-    }
+def get_youtube_transcript(video_id):
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-        return "./audio/audio.mp3"
+        transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        formatter = TextFormatter()
+        plain_text_transcript = formatter.format_transcript(transcript)
+        return plain_text_transcript
+    
     except Exception as e:
-        print(f"Error downloading Youtube video: {e}")
-        return None
+        return f"An error occurred: {e}"
 
 
 def get_response(context, question, llm):
-    #encoded_image = encode_image(path)
-
     prompt = ChatPromptTemplate.from_messages(
         [
         (
@@ -71,7 +65,6 @@ def get_response(context, question, llm):
          | llm
          | StrOutputParser()
     )
-    #response_text = model.invoke(prompt)
     response_text = chain.invoke(question)
     return response_text
    
@@ -85,11 +78,9 @@ llm = Ollama(model="llama3.2",temperature=0.5)
 conversation = ConversationChain(llm = llm, memory = ConversationSummaryMemory(llm=llm))
 
 
-#response = get_response(transcription, "Please summarize this transcript", llm)
 
-#response_text = response["choices"][0]["message"]["content"]
 embeddings = OpenAIEmbeddings()
-#chunks = load_and_split()
+
 #save_database(embeddings, chunks)
 db = load_database(embeddings)
 print("Ready to answer questions")
@@ -100,10 +91,20 @@ if "messages" not in st.session_state:
     st.session_state.messages = load_chat_history()
 
 
+
 with st.sidebar:
     if st.button("Clear Chat History"):
         st.session_state.messages = []
         save_chat_history([])
+
+    url = st.text_input("Enter a Youtube URL", value="")
+    if st.button("Get Transcription"):
+        id = url.split("=")[1]
+        transcription = get_youtube_transcript(id)
+        print(transcription)
+        chunks = load_and_split(transcription)
+        save_database(embeddings, chunks)
+
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
@@ -116,7 +117,6 @@ if prompt := st.chat_input("How can I help?"):
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         context = query_database(prompt,db)
-        print(context)
         full_response = get_response(context,prompt,llm)
         message_placeholder.markdown(full_response)   
     st.session_state.messages.append({"role": "assistant", "content": full_response})
