@@ -21,14 +21,13 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain.chains import ConversationChain
 from langchain.memory.summary import ConversationSummaryMemory
-from langchain_core.messages import HumanMessage, AIMessage
 
 api_key = os.getenv("OPENAI_API_KEY")
 
 
 def get_transcription_from_audio(audio_path, model_size = "base"):
    # Run on GPU with FP16
-    model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
+    model = WhisperModel(model_size, device="cpu", compute_type="int8_float16")
     segments, info = model.transcribe(audio_path, beam_size=5)
 
     #for s in segments:
@@ -119,7 +118,7 @@ def transcribe_file():
             transcription, segments =  get_transcription_from_audio(f"./audio/chunks/chunk{i}.mp3", model_size= "tiny")
             transcriptions.append(transcription)
             print(f"transcription {i} completed")
-            time.sleep(20)
+            time.sleep(2)
 
         print(len(transcriptions))
         for f in os.listdir("./audio/chunks"):
@@ -145,7 +144,7 @@ def transcribe_file():
     print("transcription completed")
 
 
-#transcribe_file()
+transcribe_file()
 
 
 file = open("transcription.txt", "r")
