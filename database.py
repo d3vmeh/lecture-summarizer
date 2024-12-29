@@ -34,12 +34,12 @@ def load_and_split_from_youtube(transcription):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size = 1000, chunk_overlap = 60, length_function = len, is_separator_regex  = False)
     return text_splitter.split_documents(document)
 
-def save_youtube_database(embeddings, chunks, path="DBs"):
+def save_youtube_database(embeddings, chunks, path="Chroma"):
     database = Chroma.from_documents(chunks,embeddings,persist_directory=path)
     database.persist()
     print(f"Saved {len(chunks)} chunks to Chroma")
 
-def load_youtube_database(embeddings, path="DBs"):
+def load_youtube_database(embeddings, path="Chroma"):
     database = Chroma(persist_directory=path,embedding_function=embeddings)
     return database
 
