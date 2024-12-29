@@ -6,7 +6,6 @@ import math
 import time
 import sys
 from database import *
-
 import streamlit as st
 
 
@@ -28,7 +27,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 
 def get_transcription_from_audio(audio_path, model_size = "base"):
    # Run on GPU with FP16
-    model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
+    model = WhisperModel(model_size, device="cpu", compute_type="int8")
     segments, info = model.transcribe(audio_path, beam_size=5)
 
     #for s in segments:
@@ -120,6 +119,7 @@ def transcribe_file():
             transcriptions.append(transcription)
             print(f"transcription {i} completed")
             time.sleep(20)
+        
 
         print(len(transcriptions))
         for f in os.listdir("./audio/chunks"):
@@ -153,7 +153,7 @@ transcription = file.read()
 file.close()
 
 llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.5)
-llm = Ollama(model="llama3.1",temperature=0.5)
+llm = Ollama(model="llama3.2",temperature=0.5)
 
 conversation = ConversationChain(llm = llm, memory = ConversationSummaryMemory(llm=llm))
 
@@ -162,7 +162,6 @@ conversation = ConversationChain(llm = llm, memory = ConversationSummaryMemory(l
 
 #response_text = response["choices"][0]["message"]["content"]
 embeddings = OpenAIEmbeddings()
-
 #chunks = load_and_split()
 #save_database(embeddings, chunks)
 db = load_database(embeddings)

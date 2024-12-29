@@ -23,7 +23,7 @@ def save_database(embeddings, chunks, path="Chroma"):
     database.persist()
     print(f"Saved {len(chunks)} chunks to Chroma")
 
-def load_database(embeddings, path="Chroma"):
+def load_database(embeddings, path="DBs"):
     database = Chroma(persist_directory=path,embedding_function=embeddings)
     return database
 
