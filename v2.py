@@ -101,7 +101,7 @@ with st.sidebar:
     if st.button("Get Transcription"):
         id = url.split("=")[1]
         transcription = get_youtube_transcript(id)
-        print(transcription)
+        st.write(transcription)
         chunks = load_and_split(transcription)
         save_database(embeddings, chunks)
 

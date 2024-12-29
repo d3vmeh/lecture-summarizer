@@ -13,8 +13,13 @@ def load_transcription():
     document = [Document(transcription)]
     return document
 
-def load_and_split():
+def load_and_split(transcription):
     document = load_transcription()
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size = 1000, chunk_overlap = 60, length_function = len, is_separator_regex  = False)
+    return text_splitter.split_documents(document)
+
+def load_and_split_from_youtube(transcription):
+    document = [Document(transcription)]
     text_splitter = RecursiveCharacterTextSplitter(chunk_size = 1000, chunk_overlap = 60, length_function = len, is_separator_regex  = False)
     return text_splitter.split_documents(document)
 
