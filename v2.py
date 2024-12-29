@@ -67,23 +67,11 @@ def get_response(context, question, llm):
     )
     response_text = chain.invoke(question)
     return response_text
-   
-file = open("transcription.txt", "r")
-transcription = file.read()
-file.close()
 
 llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.5)
-llm = Ollama(model="llama3.2",temperature=0.5)
 
 conversation = ConversationChain(llm = llm, memory = ConversationSummaryMemory(llm=llm))
-
-
-
 embeddings = OpenAIEmbeddings()
-
-#save_database(embeddings, chunks)
-db = load_database(embeddings)
-print("Ready to answer questions")
 
 st.title("Chat with Video Transcript")
 
@@ -102,8 +90,8 @@ with st.sidebar:
         id = url.split("=")[1]
         transcription = get_youtube_transcript(id)
         st.write(transcription)
-        chunks = load_and_split(transcription)
-        save_database(embeddings, chunks)
+        chunks = load_and_split_from_youtube(transcription)
+        save_youtube_database(embeddings, chunks)
 
 
 for message in st.session_state.messages:
@@ -116,7 +104,9 @@ if prompt := st.chat_input("How can I help?"):
         st.markdown(prompt)
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
+        db = load_youtube_database(embeddings)
         context = query_database(prompt,db)
+        print(context)
         full_response = get_response(context,prompt,llm)
         message_placeholder.markdown(full_response)   
     st.session_state.messages.append({"role": "assistant", "content": full_response})
