@@ -2,7 +2,7 @@
 
 # AI Audio/Video Transcription and Summarization with RAG
 
-This project is an AI-powered tool that transcribes audio files from various sources, including YouTube videos and other downloaded audio/video formats. The transcriptions are saved to a Chroma database for efficient storage and retrieval. Additionally, the program generates a summary of the transcription.
+This project is an AI-powered tool that transcribes audio files from various sources, including YouTube videos and other downloaded audio/video formats. The transcriptions are saved to a Chroma database for  storage and retrieval.
 
 ### Key Features:
 - **Audio/Video Transcription**: Automatically transcribes audio from YouTube videos and other audio/video files.
